@@ -20,7 +20,7 @@ public class TournamentServlet extends HttpServlet {
 
     public TournamentServlet() {
         try {
-            Class.forName("org.mysql.Driver");
+            Class.forName("com.mysql.jdbc.Driver");
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
