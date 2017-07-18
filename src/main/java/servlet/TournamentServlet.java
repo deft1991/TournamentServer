@@ -29,29 +29,8 @@ public class TournamentServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String actionName = req.getParameter("action");
-        //String data = req.getParameter("data");
-        String data = "[{  \"name\": \"table_1\",\n" +
-                "            \"datatype\": \"table\",\n" +
-                "            \"value\": [\n" +
-                "              [1, 2, 3],\n" +
-                "              [4, 5, 6],\n" +
-                "              [7, 8, 9]\n" +
-                "            ],\n" +
-                "            \"columns\": [\n" +
-                "              {\n" +
-                "                \"name\": \"c1\",\n" +
-                "                \"type\": \"long\"\n" +
-                "              },\n" +
-                "              {\n" +
-                "                \"name\": \"c2\",\n" +
-                "                \"type\": \"long\"\n" +
-                "              },\n" +
-                "              {\n" +
-                "                \"name\": \"c3\",\n" +
-                "                \"type\": \"long\"\n" +
-                "              }\n" +
-                "            ]\n" +
-                "          }]";
+        String data = req.getParameter("data");
+
         String sessionIdStr = req.getParameter("sessionId");
         long sessionId;
         if (Tools.isEmptyString(sessionIdStr)) {

@@ -79,7 +79,8 @@ public class Column {
     public String getValueSql(int index) {
         switch (type) {
             case TYPE_BOOLEAN:
-            case TYPE_LONG: return String.valueOf(values.get(index));
+            case TYPE_LONG:
+            case TYPE_DOUBLE: return String.valueOf(values.get(index));
             case TYPE_STRING :
             case TYPE_DATE : return "'" + values.get(index).toString() + "'";
             default: return "";
