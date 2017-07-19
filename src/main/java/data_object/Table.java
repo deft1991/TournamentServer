@@ -1,9 +1,9 @@
 package data_object;
 
-import calculate.Matrix;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import session_tools.Session;
+import tools.MyTournamentException;
 
 import java.sql.*;
 import java.util.*;
@@ -44,7 +44,7 @@ public class Table implements IDataObject {
     * */
 
     public Table(JSONObject jsonData, long sessionId) {
-        this.tableName = jsonData.getString("name") + "_" + String.valueOf(sessionId);
+        this.tableName = jsonData.getString("name") + "_" + sessionId;
         JSONArray columnObjects = jsonData.getJSONArray("columns");
         JSONArray columnValues = jsonData.getJSONArray("value");
         this.columns = new LinkedHashSet<>();
@@ -55,7 +55,7 @@ public class Table implements IDataObject {
         for (int i = 0; i < lineCount; i++) {
             JSONArray lineValues = columnValues.getJSONArray(i);
             if (this.getColumns().size() != lineValues.length()) {
-                throw new RuntimeException("Ошибка! Не верное сопоставление количества значений и колонок " +
+                throw new MyTournamentException("Ошибка! Не верное сопоставление количества значений и колонок " +
                         "в таблце " + getName());
             }
             Iterator<Column> it = this.getColumns().iterator();
@@ -98,7 +98,7 @@ public class Table implements IDataObject {
 
     private void validateColumn(Column oneColumn) {
         if (columns != null && this.columns.contains(oneColumn)) {
-            throw new RuntimeException("Ошибка! В таблице " + getName() + " уже присутствует " +
+            throw new MyTournamentException("Ошибка! В таблице " + getName() + " уже присутствует " +
                     "колонка с именем " + oneColumn.getName());
         }
     }
@@ -126,7 +126,7 @@ public class Table implements IDataObject {
         if (operandTwo instanceof Table) {
             return new Table(new Matrix(this).getMatrixSum(new Matrix((Table) operandTwo)), "result_" + resultIndex);
         } else {
-            throw new RuntimeException("Ошибка! Нельзя суммировать матрицу с числом");
+            throw new MyTournamentException("Ошибка! Нельзя суммировать матрицу с числом");
         }
     }
 
@@ -135,7 +135,7 @@ public class Table implements IDataObject {
         if (operandTwo instanceof Table) {
             return new Table(new Matrix(this).getSubstractMatrix(new Matrix((Table) operandTwo)), "result_" + resultIndex);
         } else {
-            throw new RuntimeException("Ошибка! Нельзя вычитать матрицу и число");
+            throw new MyTournamentException("Ошибка! Нельзя вычитать матрицу и число");
         }
     }
 
@@ -160,6 +160,7 @@ public class Table implements IDataObject {
     @Override
     public void insertTempAsSorce(String name, Session session) throws SQLException {
         String tempTableName = name + "_" + session.getSessionId();
+        this.dropTable(session.getSqlConnection(), tempTableName);
         this.createTable(session.getSqlConnection(), tempTableName);
         this.insertTableData(session.getSqlConnection(), tempTableName);
         session.getSessionTables().add(tempTableName);
@@ -184,6 +185,7 @@ public class Table implements IDataObject {
             lineValues[i] = new ArrayList<>();
             Iterator<Column> it = this.columns.iterator();
             for (int k = 0; k < this.columns.size(); k++) {
+
                 lineValues[i].add(it.next().getValues().get(i));
             }
         }
@@ -254,7 +256,7 @@ public class Table implements IDataObject {
             for (Column oneColumn : table.getColumns()) {
                 if (oneColumn.getType() != Column.TYPE_LONG) {
                     if (oneColumn.getType() != Column.TYPE_DOUBLE) {
-                        throw new RuntimeException("Ошибка! В таблице " + table.getName() + " не все колонки числовые");
+                        throw new MyTournamentException("Ошибка! В таблице " + table.getName() + " не все колонки числовые");
                     } else {
                         this.matrixType = Column.TYPE_DOUBLE;
                     }
@@ -339,7 +341,7 @@ public class Table implements IDataObject {
         public Matrix getMatrixSum(Matrix summand) {
             Double[][] summandValues = summand.getValues();
             if (isEqualMatrixSize(summandValues)) {
-                throw new RuntimeException("Размерность слогаемых матриц не совпадает");
+                throw new MyTournamentException("Размерность слогаемых матриц не совпадает");
             }
             Double[][] result = new Double[summandValues.length][summandValues[0].length];
             for (int i = 0; i < summandValues.length; i++) {
@@ -357,7 +359,7 @@ public class Table implements IDataObject {
         public Matrix getSubstractMatrix(Matrix subtrahend) {
             Double[][] subtrahendValues = subtrahend.getValues();
             if (isEqualMatrixSize(subtrahendValues)) {
-                throw new RuntimeException("Размерность вычитаемых матриц не совпадает");
+                throw new MyTournamentException("Размерность вычитаемых матриц не совпадает");
             }
             Double[][] result = new Double[subtrahendValues.length][subtrahendValues[0].length];
             for (int i = 0; i < subtrahendValues.length; i++) {
@@ -426,7 +428,7 @@ public class Table implements IDataObject {
         private Matrix getInversionMatrix(Double[][] matrix) {
             int colCount = matrix.length;
             if (colCount != 0 && colCount != matrix[0].length && detMatrix(matrix).intValue() != 0) {
-                throw new RuntimeException("Для заданной матрици не существует обратной");
+                throw new MyTournamentException("Для заданной матрици не существует обратной");
             }
 
             Double temp;

@@ -1,6 +1,7 @@
 package data_object;
 
 import org.json.JSONObject;
+import tools.MyTournamentException;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,11 +14,11 @@ import java.util.Map;
  */
 public class Column {
 
-    public static final int TYPE_STRING = 1;
+    public static final int TYPE_STRING = 12;
     public static final int TYPE_LONG = -5;
-    public static final int TYPE_DATE = 2;
-    public static final int TYPE_BOOLEAN = 3;
-    public static final int TYPE_DOUBLE = 4;
+    public static final int TYPE_DATE = 91;
+    public static final int TYPE_BOOLEAN = 4;
+    public static final int TYPE_DOUBLE = 8;
 
     private String name;
     private List<Object> values;
@@ -71,7 +72,7 @@ public class Column {
             case TYPE_BOOLEAN:
                 return "boolean";
             default:
-                throw new RuntimeException("Не известный тип колонки");
+                throw new MyTournamentException("Не известный тип колонки");
         }
     }
 
@@ -82,7 +83,7 @@ public class Column {
             case "string": return TYPE_STRING;
             case "date": return TYPE_DATE;
             case "boolean": return TYPE_BOOLEAN;
-            default: throw new RuntimeException("Не известный тип колонки");
+            default: throw new MyTournamentException("Не известный тип колонки");
         }
     }
 
@@ -105,8 +106,8 @@ public class Column {
     public String getValueSql(int index) {
         switch (type) {
             case TYPE_BOOLEAN:
-            case TYPE_LONG:
             case TYPE_DOUBLE: return String.valueOf(values.get(index));
+            case TYPE_LONG: return String.valueOf(values.get(index));
             case TYPE_STRING :
             case TYPE_DATE : return "'" + values.get(index).toString() + "'";
             default: return "";

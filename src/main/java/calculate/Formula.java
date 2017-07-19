@@ -1,12 +1,11 @@
 package calculate;
 
 import data_object.IDataObject;
-import data_object.Table;
 import org.json.JSONObject;
 import session_tools.Session;
+import tools.MyTournamentException;
 
 import java.sql.SQLException;
-import java.util.Map;
 
 /**
  *
@@ -17,6 +16,7 @@ public class Formula {
     public static final String SUBSTRACT = "-";
     public static final String SUM = "+";
     public static final String MULTIPLICATION = "*";
+    public static final String DIVIDE = "/";
     public static final String TEMP = "->";
 
     private String formulaScript;
@@ -72,7 +72,7 @@ public class Formula {
                 }
             }
         }
-        throw new RuntimeException("Ошибка! Не верная формула");
+        throw new MyTournamentException("Ошибка! Не верная формула");
     }
 
     private IDataObject getResult(IDataObject operandOne, String operandTwoName, String operator) throws SQLException {
@@ -84,7 +84,8 @@ public class Formula {
         switch (operator) {
             case SUBSTRACT : return operandOne.getSubstractResult(operandTwo, formulaIndex);
             case SUM : return operandOne.getSumResult(operandTwo, formulaIndex);
-            case MULTIPLICATION : return operandOne.getDividerResult(operandTwo, formulaIndex);
+            case MULTIPLICATION : return operandOne.getMultiplicationResult(operandTwo, formulaIndex);
+            case DIVIDE : return operandOne.getDividerResult(operandTwo, formulaIndex);
         }
         return null;
 

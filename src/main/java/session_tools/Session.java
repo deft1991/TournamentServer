@@ -7,6 +7,7 @@ import data_object.Table;
 import data_object.Variable;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import tools.MyTournamentException;
 
 import java.sql.*;
 import java.util.*;
@@ -25,11 +26,16 @@ public class Session {
     private Map<String, LinkTable> linkTables = new HashMap<>();
 
     public Session(long sessionId) {
+        this(sessionId, "jdbc:mysql://localhost:3306/javastudy", "root", "root");
+
+    }
+
+    public Session(long sessionId, String dbAdress, String dbLogin, String dbPassword) {
         this.sessionId = sessionId;
         try {
-            sqlConnection = DriverManager.getConnection("jdbc:mysql://localhost:3306/javastudy","root", "root");
+            sqlConnection = DriverManager.getConnection(dbAdress,dbLogin, dbPassword);
         } catch (SQLException e) {
-            e.printStackTrace();
+            throw new MyTournamentException("Ошибка! Не удалось установить соединение с базой данных");
         }
     }
 
@@ -53,13 +59,18 @@ public class Session {
 
     public String getResultByAction(String actionName, String inputData) throws SQLException {
         switch (actionName) {
-            case "test" : return getActionHello();
-            case "calculate" : return getActionCalulate(getTestCalculation()); // тестовая строка
-            case "get_table" : return getActionHello();
+            case "calculate" : return getActionCalulate(inputData); // тестовая строка
+            case "save_table" :
+                new Table(new JSONObject(inputData), getSessionId()).insertInDB(getSqlConnection());
+                return "Таблица успешно перезаписана";
             case "start_service" : return getActiongStartService(inputData);
+            case "start_and_calculate" :
+                JSONObject inputObj = new JSONObject(inputData);
+                getActiongStartService(inputObj.getString("input_data"));
+                return getActionCalulate(inputObj.getString("calculate"));
             case "close_session" :
                 SessionController.getInstance().closeSession(sessionId);
-                return "session close, all tables are droped";
+                return "Сессия закрыта, все таблицы удалены";
             default: return "hello";
         }
     }
@@ -118,11 +129,13 @@ public class Session {
     private String getActionCalulate(String inputData) throws SQLException {
         JSONObject calculateObject = new JSONObject(inputData);
         JSONArray formuls = calculateObject.getJSONArray("formuls");
-        JSONArray linkTables = calculateObject.getJSONArray("filters");
-        for (int i = 0; i < linkTables.length(); i++) {
-            JSONObject linkTableJSON = linkTables.getJSONObject(i);
-            this.linkTables.put(linkTableJSON.getString("table") + "_" + getSessionId(),
-                    new LinkTable(linkTableJSON, getSessionTables(), getSessionId()));
+        if (calculateObject.keySet().contains("filters")) {
+            JSONArray linkTables = calculateObject.getJSONArray("filters");
+            for (int i = 0; i < linkTables.length(); i++) {
+                JSONObject linkTableJSON = linkTables.getJSONObject(i);
+                this.linkTables.put(linkTableJSON.getString("table") + "_" + getSessionId(),
+                        new LinkTable(linkTableJSON, getSessionTables(), getSessionId()));
+            }
         }
         JSONArray resultArr = new JSONArray();
         for (int i = 0; i < formuls.length(); i++) {
@@ -136,10 +149,12 @@ public class Session {
     }
 
     private void createVariableTable() throws SQLException {
+        Table.dropTable(getSqlConnection(),VARIALBE_TABLE_NAME + "_" + getSessionId());
         try (Statement statement = getSqlConnection().createStatement()) {
-            statement.execute("CREATE TABLE " + VARIALBE_TABLE_NAME + getSessionId() + "(" +
+            statement.execute("CREATE TABLE " + VARIALBE_TABLE_NAME + "_" + getSessionId() + " (" +
                     "var_name VARCHAR (100), " +
-                    "var_value DOUBLE)");
+                    "var_value double precision)");
+            sessionTables.add(VARIALBE_TABLE_NAME + "_" + getSessionId());
         }
     }
 
@@ -148,13 +163,13 @@ public class Session {
         createVariableTable();
         for (int i = 0; i < dataObjList.length(); i++) {
             JSONObject oneDataObj = dataObjList.getJSONObject(i);
-            if ("table".equals(oneDataObj.getString("datatype"))) {
+            if ("table".equals(oneDataObj.getString("type"))) {
                 Table oneTable = new Table(oneDataObj, sessionId);
                 sessionTables.add(oneTable.getName());
                 oneTable.insertInDB(getSqlConnection());
             } else {
                 Variable variable = new Variable(oneDataObj.getString("name"),
-                        Double.parseDouble(oneDataObj.getString("value")), getSessionId());
+                        Double.parseDouble(oneDataObj.get("value").toString()), getSessionId());
                 variable.insertInDB(getSqlConnection());
             }
         }
@@ -181,7 +196,7 @@ public class Session {
                 return getTableFromLink(objectName);
             } else {
                 try (PreparedStatement ps = getSqlConnection().prepareStatement(
-                        "select * from " + VARIALBE_TABLE_NAME + " where variable_name = ?"
+                        "select * from " + VARIALBE_TABLE_NAME + "_" + getSessionId() + " where var_name = ?"
                 )) {
                     ps.setString(1, name);
                     ResultSet rs = ps.executeQuery();
@@ -191,7 +206,7 @@ public class Session {
                 }
             }
         }
-        throw new RuntimeException("Ошибка! Не верно указан оператор");
+        throw new MyTournamentException("Ошибка! Не верно указан оператор");
     }
 
 }

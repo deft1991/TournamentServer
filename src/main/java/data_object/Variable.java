@@ -2,6 +2,7 @@ package data_object;
 
 import org.json.JSONObject;
 import session_tools.Session;
+import tools.MyTournamentException;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -36,7 +37,7 @@ public class Variable implements IDataObject {
     @Override
     public void insertInDB(Connection connection) throws SQLException {
         try (PreparedStatement ps = connection.prepareStatement(
-                "insert INTO " + Session.VARIALBE_TABLE_NAME + sessionId +
+                "insert INTO " + Session.VARIALBE_TABLE_NAME + "_" + sessionId +
                         "(var_name, var_value) VALUES (?, ?)"
         )) {
             ps.setString(1, variableName);
@@ -73,7 +74,7 @@ public class Variable implements IDataObject {
         if (operandTwo instanceof Variable) {
             return new Variable("result_" + resultIndex, getValue() - ((Variable) operandTwo).getValue());
         } else {
-            throw new RuntimeException("Ошибка! Нельзя вычитать матрицу и число");
+            throw new MyTournamentException("Ошибка! Нельзя вычитать матрицу и число");
         }
     }
 

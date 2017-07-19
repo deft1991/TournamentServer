@@ -2,6 +2,7 @@ package servlet;
 
 import session_tools.Session;
 import session_tools.SessionController;
+import tools.MyTournamentException;
 import tools.Tools;
 
 import javax.servlet.ServletException;
@@ -30,23 +31,26 @@ public class TournamentServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String actionName = req.getParameter("action");
         String data = req.getParameter("data");
-
-        String sessionIdStr = req.getParameter("sessionId");
-        long sessionId;
-        if (Tools.isEmptyString(sessionIdStr)) {
-            sessionId = SessionController.getInstance().generateSessionId();
-        } else {
-            sessionId = Long.parseLong(sessionIdStr);
+        if (!Tools.isEmptyString(actionName)) {
+            String sessionIdStr = req.getParameter("sessionId");
+            long sessionId;
+            if (Tools.isEmptyString(sessionIdStr) || "undefined".equalsIgnoreCase(sessionIdStr)) {
+                sessionId = SessionController.getInstance().generateSessionId();
+            } else {
+                sessionId = Long.parseLong(sessionIdStr);
+            }
+            Session session = SessionController.getInstance().getSessionById(sessionId);
+            PrintWriter out = resp.getWriter();
+            String result;
+            try {
+                result = session.getResultByAction(actionName, data);
+            } catch (MyTournamentException myE) {
+                result = myE.getMessage();
+            } catch (Exception e) {
+                result = "Произошла какая-то беда";
+            }
+            out.print(result);
         }
-        Session session = SessionController.getInstance().getSessionById(sessionId);
-        PrintWriter out = resp.getWriter();
-        String result;
-        try {
-            result = session.getResultByAction(actionName, data);
-        } catch (Exception e) {
-            result = "Произошла какая-то беда";
-        }
-        out.print(result);
 
     }
 
