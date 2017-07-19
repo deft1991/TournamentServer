@@ -3,7 +3,9 @@ package data_object;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -12,7 +14,7 @@ import java.util.List;
 public class Column {
 
     public static final int TYPE_STRING = 1;
-    public static final int TYPE_LONG = 0;
+    public static final int TYPE_LONG = -5;
     public static final int TYPE_DATE = 2;
     public static final int TYPE_BOOLEAN = 3;
     public static final int TYPE_DOUBLE = 4;
@@ -47,6 +49,30 @@ public class Column {
 
     public List<Object> getValues() {
         return values;
+    }
+
+    public JSONObject getJSONObject() {
+        Map<String, String> objectMap = new HashMap<>();
+        objectMap.put("name", getName());
+        objectMap.put("type", getTypeStr());
+        return new JSONObject(objectMap);
+    }
+
+    private String getTypeStr() {
+        switch (type) {
+            case TYPE_LONG:
+                return "long";
+            case TYPE_DOUBLE:
+                return "double";
+            case TYPE_STRING:
+                return "string";
+            case TYPE_DATE:
+                return "date";
+            case TYPE_BOOLEAN:
+                return "boolean";
+            default:
+                throw new RuntimeException("Не известный тип колонки");
+        }
     }
 
     private static int getColumnType(String typeStr) {

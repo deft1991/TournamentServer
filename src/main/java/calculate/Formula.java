@@ -2,9 +2,11 @@ package calculate;
 
 import data_object.IDataObject;
 import data_object.Table;
+import org.json.JSONObject;
 import session_tools.Session;
 
 import java.sql.SQLException;
+import java.util.Map;
 
 /**
  *
@@ -15,7 +17,7 @@ public class Formula {
     public static final String SUBSTRACT = "-";
     public static final String SUM = "+";
     public static final String MULTIPLICATION = "*";
-    public static final String TEMP = "=>";
+    public static final String TEMP = "->";
 
     private String formulaScript;
     private IDataObject result;
@@ -25,6 +27,7 @@ public class Formula {
     public Formula(String formulaScript, Session session, int formulaIndex) throws SQLException {
         this.formulaScript = formulaScript;
         this.formulaIndex = formulaIndex;
+        this.session = session;
         result = parseFormula(new StringBuilder(formulaScript));
     }
 
@@ -50,8 +53,8 @@ public class Formula {
         String operator;
         for (int i = 0; i < script.length(); i++) {
             if ((operator = getOperator(i, script.toString())) != null) {
-                operandOne = session.getDataObject(script.substring(0, i + operator.length()));
-                return getOperationResult(operandOne, operator, script.delete(0, i));
+                operandOne = session.getDataObject(script.substring(0, i));
+                return getOperationResult(operandOne, operator, script.delete(0, i + operator.length()));
             }
         }
         throw new RuntimeException("Ошибка! Не верная формула");
@@ -60,8 +63,8 @@ public class Formula {
     private IDataObject getOperationResult(IDataObject firstOperand, String operator, StringBuilder script) throws SQLException {
         String nextOperator;
         for (int i = 0; i < script.length(); i++) {
-            if ((nextOperator = getOperator(i, script.toString())) != null || i != script.length() - 1) {
-                IDataObject result = getResult(firstOperand, script.substring(0, i), operator);
+            if ((nextOperator = getOperator(i, script.toString())) != null || i == script.length() - 1) {
+                IDataObject result = getResult(firstOperand, script.substring(0, i + operator.length() - 1), operator);
                 if (nextOperator != null) {
                     return getOperationResult(result, nextOperator, script.delete(0, i + nextOperator.length()));
                 } else {
@@ -73,17 +76,25 @@ public class Formula {
     }
 
     private IDataObject getResult(IDataObject operandOne, String operandTwoName, String operator) throws SQLException {
+        if (TEMP.equals(operator)) {
+            operandOne.insertTempAsSorce(operandTwoName, session);
+            return session.getDataObject(operandTwoName);
+        }
         IDataObject operandTwo = session.getDataObject(operandTwoName);
         switch (operator) {
             case SUBSTRACT : return operandOne.getSubstractResult(operandTwo, formulaIndex);
             case SUM : return operandOne.getSumResult(operandTwo, formulaIndex);
             case MULTIPLICATION : return operandOne.getDividerResult(operandTwo, formulaIndex);
-            case TEMP :
-                operandOne.insertTempAsSorce(operandTwoName, session);
-                return session.getDataObject(operandTwoName);
         }
         return null;
 
+    }
+
+    public JSONObject getJSONObject() {
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("formula", formulaScript);
+        jsonObject.put("result", result.getJSONObject());
+        return jsonObject;
     }
 
 

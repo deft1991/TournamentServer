@@ -6,9 +6,7 @@ import org.json.JSONObject;
 import session_tools.Session;
 
 import java.sql.*;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.*;
 
 /**
  *
@@ -46,7 +44,7 @@ public class Table implements IDataObject {
     * */
 
     public Table(JSONObject jsonData, long sessionId) {
-        this.tableName = jsonData.getString("name") + String.valueOf(sessionId);
+        this.tableName = jsonData.getString("name") + "_" + String.valueOf(sessionId);
         JSONArray columnObjects = jsonData.getJSONArray("columns");
         JSONArray columnValues = jsonData.getJSONArray("value");
         this.columns = new LinkedHashSet<>();
@@ -69,11 +67,12 @@ public class Table implements IDataObject {
 
     public Table(ResultSet rs) throws SQLException {
         ResultSetMetaData rsMetaData = rs.getMetaData();
-        this.tableName = rsMetaData.getTableName(0);
+        this.tableName = rsMetaData.getTableName(1);
         this.columns = new LinkedHashSet<>();
         int columnCount = rsMetaData.getColumnCount();
         for (int i = 0; i < rsMetaData.getColumnCount(); i++) {
-            addColumns(new Column(rsMetaData.getColumnName(i), rsMetaData.getColumnType(i)));
+            //long = -5
+            addColumns(new Column(rsMetaData.getColumnName(i + 1), rsMetaData.getColumnType(i + 1)));
         }
         while (rs.next()) {
             this.lineCount++;
@@ -160,7 +159,10 @@ public class Table implements IDataObject {
 
     @Override
     public void insertTempAsSorce(String name, Session session) throws SQLException {
-        this.createTable(session.getSqlConnection(), name + "_" + session.getSessionId());
+        String tempTableName = name + "_" + session.getSessionId();
+        this.createTable(session.getSqlConnection(), tempTableName);
+        this.insertTableData(session.getSqlConnection(), tempTableName);
+        session.getSessionTables().add(tempTableName);
 
     }
 
@@ -173,7 +175,24 @@ public class Table implements IDataObject {
 
     @Override
     public JSONObject getJSONObject() {
-        return null;
+        Map<String, Object> objectMap = new HashMap<>();
+        objectMap.put("name", new StringBuilder(getName()).delete(getName().lastIndexOf("_"), getName().length()).toString());
+        objectMap.put("datatype", "table");
+        ArrayList[] lineValues = new ArrayList[lineCount];
+        JSONArray columns = new JSONArray();
+        for (int i = 0; i < lineCount; i++) {
+            lineValues[i] = new ArrayList<>();
+            Iterator<Column> it = this.columns.iterator();
+            for (int k = 0; k < this.columns.size(); k++) {
+                lineValues[i].add(it.next().getValues().get(i));
+            }
+        }
+        objectMap.put("values", lineValues);
+        for (Iterator<Column> it = this.columns.iterator(); it.hasNext(); ) {
+            columns.put(it.next().getJSONObject());
+        }
+        objectMap.put("columns", columns);
+        return new JSONObject(objectMap);
     }
 
     public static void dropTable(Connection connection, String tableName) throws SQLException {
@@ -199,7 +218,7 @@ public class Table implements IDataObject {
         }
     }
 
-    private void insertTableData(Connection connection) throws SQLException {
+    private void insertTableData(Connection connection, String tableName) throws SQLException {
         StringBuilder sql = new StringBuilder();
         sql.append("insert into ")
                 .append(tableName)
@@ -220,6 +239,11 @@ public class Table implements IDataObject {
             ps.executeUpdate();
         }
     }
+
+    private void insertTableData(Connection connection) throws SQLException {
+        this.insertTableData(connection, this.tableName);
+    }
+
     class Matrix {
 
         // [количество строк][количество столбцов]
@@ -239,8 +263,9 @@ public class Table implements IDataObject {
             Set<Column> columns = table.getColumns();
             this.values = new Double[getLineCount()][columns.size()];
             for (int i = 0; i < values.length; i++) {
+                Iterator<Column> it = columns.iterator();
                 for (int k = 0; k < values[i].length; k++) {
-                    values[i][k] = (Double) columns.iterator().next().getValues().get(k);
+                    values[i][k] = new Double(it.next().getValues().get(i).toString());
                 }
             }
         }
