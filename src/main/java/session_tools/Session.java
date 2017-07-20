@@ -75,31 +75,6 @@ public class Session {
         }
     }
 
-    /*
-    * {
- "uid": "d4dca8c7-5b65-11e2-bbf7-005056876601",
- "formuls":["t11+a2->temp1", "t->temp2"],
- "filters":[
-  {
-   "table" : "t11",
-   "source" : "t1",
-
-   "filter": [
-    {"name":"Name", "operation":"", "value": "a"},
-    {"name":"Salary", "operation":"<", "value": "500"}
-   ]
-  },
-  {
-   "table" : "t",
-   "filter": [
-    {"name":"Name", "operation":">", "value": "afd"},
-    {"name":"Salary", "operation":"=", "value": "30"}
-   ]
-  }
- ]
-}
-    * */
-
     private String getTestCalculation() {
         return "{\n" +
                 " \"formuls\":[\"t11+table_1->temp1\", \"t->temp2\"],\n" +

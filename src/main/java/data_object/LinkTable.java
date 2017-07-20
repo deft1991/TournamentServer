@@ -41,9 +41,11 @@ public class LinkTable {
     public LinkTable(JSONObject linkObject, Set<String> sessionTables, long sessionId) {
         this.sourceTableName = linkObject.getString("source") + "_" + sessionId;
         if (sessionTables.contains(this.sourceTableName)) {
-            JSONArray filters = linkObject.getJSONArray("filter");
-            for (int i = 0; i < filters.length(); i++) {
-                this.filters.add(getFilterFromJSON(filters.getJSONObject(i)));
+            if  (linkObject.keySet().contains("filter")) {
+                JSONArray filters = linkObject.getJSONArray("filter");
+                for (int i = 0; i < filters.length(); i++) {
+                    this.filters.add(getFilterFromJSON(filters.getJSONObject(i)));
+                }
             }
         } else {
             throw new MyTournamentException("Ошибка! В формуле указана не существующая таблица " + this.sourceTableName);
@@ -85,12 +87,14 @@ public class LinkTable {
     public String getSql() {
         StringBuilder sql = new StringBuilder();
         sql.append("select * from ")
-                .append(sourceTableName)
-                .append(" where ");
-        for (int i = 0; i < filters.size(); i++) {
-            sql.append(filters.get(i));
-            if (i != filters.size() - 1) {
-                sql.append(" and ");
+                .append(sourceTableName);
+        if (filters!=null && !filters.isEmpty()) {
+            sql.append(" where ");
+            for (int i = 0; i < filters.size(); i++) {
+                sql.append(filters.get(i));
+                if (i != filters.size() - 1) {
+                    sql.append(" and ");
+                }
             }
         }
         return sql.toString();
