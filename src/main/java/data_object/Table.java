@@ -178,7 +178,7 @@ public class Table implements IDataObject {
     public JSONObject getJSONObject() {
         Map<String, Object> objectMap = new HashMap<>();
         objectMap.put("name", new StringBuilder(getName()).delete(getName().lastIndexOf("_"), getName().length()).toString());
-        objectMap.put("datatype", "table");
+        objectMap.put("type", "table");
         ArrayList[] lineValues = new ArrayList[lineCount];
         JSONArray columns = new JSONArray();
         for (int i = 0; i < lineCount; i++) {
@@ -189,7 +189,7 @@ public class Table implements IDataObject {
                 lineValues[i].add(it.next().getValues().get(i));
             }
         }
-        objectMap.put("values", lineValues);
+        objectMap.put("value", lineValues);
         for (Iterator<Column> it = this.columns.iterator(); it.hasNext(); ) {
             columns.put(it.next().getJSONObject());
         }

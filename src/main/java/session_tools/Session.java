@@ -1,10 +1,7 @@
 package session_tools;
 
 import calculate.Formula;
-import data_object.IDataObject;
-import data_object.LinkTable;
-import data_object.Table;
-import data_object.Variable;
+import data_object.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import tools.MyTournamentException;
@@ -23,7 +20,7 @@ public class Session {
     private long sessionId;
     private Connection sqlConnection;
     private Set<String> sessionTables = new HashSet<>();
-    private Map<String, LinkTable> linkTables = new HashMap<>();
+    private Map<String, ILinkObject> linkTables = new HashMap<>();
 
     public Session(long sessionId) {
         this(sessionId, "jdbc:mysql://localhost:3306/javastudy", "root", "root");
@@ -107,9 +104,15 @@ public class Session {
         if (calculateObject.keySet().contains("filters")) {
             JSONArray linkTables = calculateObject.getJSONArray("filters");
             for (int i = 0; i < linkTables.length(); i++) {
-                JSONObject linkTableJSON = linkTables.getJSONObject(i);
-                this.linkTables.put(linkTableJSON.getString("table") + "_" + getSessionId(),
-                        new LinkTable(linkTableJSON, getSessionTables(), getSessionId()));
+                JSONObject linkObjJSON = linkTables.getJSONObject(i);
+                String name = linkObjJSON.getString("name") + "_" + getSessionId();
+                if ("table".equals(linkObjJSON.getString("type"))) {
+                    this.linkTables.put(name,
+                            new LinkTable(linkObjJSON, getSessionTables(), getSessionId()));
+                } else {
+                    this.linkTables.put(name,
+                            new LinkVariable(linkObjJSON.getString("source"),  getSessionId()));
+                }
             }
         }
         JSONArray resultArr = new JSONArray();
@@ -151,11 +154,9 @@ public class Session {
         return String.valueOf(sessionId);
     }
 
-    private Table getTableFromLink(String objectName) throws SQLException {
-        LinkTable linkTable = linkTables.get(objectName);
-        try (PreparedStatement ps = getSqlConnection().prepareStatement(linkTable.getSql())) {
-            return new Table(ps.executeQuery());
-        }
+    private IDataObject getLinkDataObj(String objectName) throws SQLException {
+        ILinkObject linkTable = linkTables.get(objectName);
+        return linkTable.getSourceObject(getSqlConnection());
     }
 
     public IDataObject getDataObject(String name) throws SQLException {
@@ -168,7 +169,7 @@ public class Session {
             }
         } else {
             if (linkTables.containsKey(objectName)) {
-                return getTableFromLink(objectName);
+                return getLinkDataObj(objectName);
             } else {
                 try (PreparedStatement ps = getSqlConnection().prepareStatement(
                         "select * from " + VARIALBE_TABLE_NAME + "_" + getSessionId() + " where var_name = ?"

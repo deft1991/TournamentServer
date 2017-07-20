@@ -3,6 +3,7 @@ package data_object;
 import org.json.JSONObject;
 import session_tools.Session;
 import tools.MyTournamentException;
+import tools.Tools;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -48,7 +49,13 @@ public class Variable implements IDataObject {
 
     @Override
     public JSONObject getJSONObject() {
-        return null;
+        JSONObject result = new JSONObject() {{
+            put("name", variableName);
+            put("value", value);
+            put("type", "double");
+        }};
+
+        return result;
     }
 
     public Double getValue() {
@@ -99,7 +106,7 @@ public class Variable implements IDataObject {
     @Override
     public void insertTempAsSorce(String name, Session session) throws SQLException {
         try (PreparedStatement ps = session.getSqlConnection().prepareStatement(
-                "insert into " + Session.VARIALBE_TABLE_NAME + session.getSessionId() + " (var_name, var_value) " +
+                "insert into " + Session.VARIALBE_TABLE_NAME + "_" + session.getSessionId() + " (var_name, var_value) " +
                         "VALUES (?, ?)"
         )) {
             ps.setString(1, name);

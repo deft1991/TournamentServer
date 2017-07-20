@@ -42,6 +42,9 @@ public class Formula {
         if (script.indexOf(MULTIPLICATION) == index) {
             operator = MULTIPLICATION;
         }
+        if (script.indexOf(DIVIDE) == index) {
+            operator = DIVIDE;
+        }
         if (script.indexOf(TEMP) == index) {
             operator = TEMP;
         }

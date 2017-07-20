@@ -9,9 +9,9 @@ public class Tools {
         return data == null || data.trim().length() == 0;
     }
 
-    public static Float round(Float data, int dividerLength) {
+    public static Double round(Double data, int dividerLength) {
         int divider = 10 ^ dividerLength;
-        float buf = data * divider;
-        return (float) Math.round(buf) / divider;
+        double buf = data * divider;
+        return (double) Math.round(buf) / divider;
     }
 }

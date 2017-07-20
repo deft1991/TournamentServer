@@ -5,6 +5,10 @@ import org.json.JSONObject;
 import tools.MyTournamentException;
 import tools.Tools;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -13,7 +17,7 @@ import java.util.Set;
  *
  * Created by PC on 17.07.2017.
  */
-public class LinkTable {
+public class LinkTable implements ILinkObject {
 
     /*
     * "filters":[
@@ -84,6 +88,7 @@ public class LinkTable {
         return filters;
     }
 
+    @Override
     public String getSql() {
         StringBuilder sql = new StringBuilder();
         sql.append("select * from ")
@@ -98,5 +103,12 @@ public class LinkTable {
             }
         }
         return sql.toString();
+    }
+
+    @Override
+    public IDataObject getSourceObject(Connection connection) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(getSql())) {
+            return new Table(ps.executeQuery());
+        }
     }
 }
