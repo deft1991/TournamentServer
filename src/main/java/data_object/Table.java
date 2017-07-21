@@ -55,8 +55,8 @@ public class Table implements IDataObject {
         for (int i = 0; i < lineCount; i++) {
             JSONArray lineValues = columnValues.getJSONArray(i);
             if (this.getColumns().size() != lineValues.length()) {
-                throw new MyTournamentException("Ошибка! Не верное сопоставление количества значений и колонок " +
-                        "в таблце " + getName());
+                throw new MyTournamentException("Error! the numbers of values don't match with numbers of columns " +
+                        "in table " + getName());
             }
             Iterator<Column> it = this.getColumns().iterator();
             for (int k = 0; k < lineValues.length(); k++) {
@@ -98,8 +98,8 @@ public class Table implements IDataObject {
 
     private void validateColumn(Column oneColumn) {
         if (columns != null && this.columns.contains(oneColumn)) {
-            throw new MyTournamentException("Ошибка! В таблице " + getName() + " уже присутствует " +
-                    "колонка с именем " + oneColumn.getName());
+            throw new MyTournamentException("Error! In table " + getName() + " alredy present " +
+                    "column with name " + oneColumn.getName());
         }
     }
 
@@ -126,7 +126,7 @@ public class Table implements IDataObject {
         if (operandTwo instanceof Table) {
             return new Table(new Matrix(this).getMatrixSum(new Matrix((Table) operandTwo)), "result_" + resultIndex);
         } else {
-            throw new MyTournamentException("Ошибка! Нельзя суммировать матрицу с числом");
+            throw new MyTournamentException("Error! Cannot sum matrices with variable");
         }
     }
 
@@ -135,7 +135,7 @@ public class Table implements IDataObject {
         if (operandTwo instanceof Table) {
             return new Table(new Matrix(this).getSubstractMatrix(new Matrix((Table) operandTwo)), "result_" + resultIndex);
         } else {
-            throw new MyTournamentException("Ошибка! Нельзя вычитать матрицу и число");
+            throw new MyTournamentException("Error! Cannot substract matrices with variable");
         }
     }
 
@@ -175,10 +175,15 @@ public class Table implements IDataObject {
     }
 
     @Override
+    public void update(Connection connection) throws SQLException {
+        this.insertInDB(connection);
+    }
+
+    @Override
     public JSONObject getJSONObject() {
         Map<String, Object> objectMap = new HashMap<>();
         objectMap.put("name", new StringBuilder(getName()).delete(getName().lastIndexOf("_"), getName().length()).toString());
-        objectMap.put("datatype", "table");
+        objectMap.put("type", "table");
         ArrayList[] lineValues = new ArrayList[lineCount];
         JSONArray columns = new JSONArray();
         for (int i = 0; i < lineCount; i++) {
@@ -189,7 +194,7 @@ public class Table implements IDataObject {
                 lineValues[i].add(it.next().getValues().get(i));
             }
         }
-        objectMap.put("values", lineValues);
+        objectMap.put("value", lineValues);
         for (Iterator<Column> it = this.columns.iterator(); it.hasNext(); ) {
             columns.put(it.next().getJSONObject());
         }
@@ -256,7 +261,7 @@ public class Table implements IDataObject {
             for (Column oneColumn : table.getColumns()) {
                 if (oneColumn.getType() != Column.TYPE_LONG) {
                     if (oneColumn.getType() != Column.TYPE_DOUBLE) {
-                        throw new MyTournamentException("Ошибка! В таблице " + table.getName() + " не все колонки числовые");
+                        throw new MyTournamentException("Error! In table " + table.getName() + " not all columns with type long or double");
                     } else {
                         this.matrixType = Column.TYPE_DOUBLE;
                     }
@@ -341,7 +346,7 @@ public class Table implements IDataObject {
         public Matrix getMatrixSum(Matrix summand) {
             Double[][] summandValues = summand.getValues();
             if (isEqualMatrixSize(summandValues)) {
-                throw new MyTournamentException("Размерность слогаемых матриц не совпадает");
+                throw new MyTournamentException("Dimensionality sum matrices are not the same");
             }
             Double[][] result = new Double[summandValues.length][summandValues[0].length];
             for (int i = 0; i < summandValues.length; i++) {
@@ -359,7 +364,7 @@ public class Table implements IDataObject {
         public Matrix getSubstractMatrix(Matrix subtrahend) {
             Double[][] subtrahendValues = subtrahend.getValues();
             if (isEqualMatrixSize(subtrahendValues)) {
-                throw new MyTournamentException("Размерность вычитаемых матриц не совпадает");
+                throw new MyTournamentException("Dimensionality deduction matrices are not the same");
             }
             Double[][] result = new Double[subtrahendValues.length][subtrahendValues[0].length];
             for (int i = 0; i < subtrahendValues.length; i++) {
@@ -380,6 +385,15 @@ public class Table implements IDataObject {
 
             return new Matrix(res);
         }
+        private void checkNaN(Double[][] matrix) {
+            for (int i = 0; i < matrix.length; i++) {
+                for (int k = 0; k < matrix[0].length; k++) {
+                    if (matrix[i][k].isNaN()) {
+                        throw new MyTournamentException("Error! It is impossible to find the inverse of a matrix");
+                    }
+                }
+            }
+        }
 
         public Matrix getMultplicationMatrix(Matrix multiplier) {
         /*int[][] mA =
@@ -398,10 +412,15 @@ public class Table implements IDataObject {
             int m = getValues().length;
             int n = multiplier.getValues()[0].length;
             int o = multiplier.getValues().length;
+            if (getValues()[0].length != o) {
+                throw new MyTournamentException("Error! The number of columns of matrix " +
+                        "A does not equal the number of rows of matrix B");
+            }
             Double[][] res = new Double[m][n];
 
             for (int i = 0; i < m; i++) {
                 for (int j = 0; j < n; j++) {
+                    res[i][j] = new Double(0);
                     for (int k = 0; k < o; k++) {
                         res[i][j] += getValues()[i][k] * multiplier.getValues()[k][j];
                     }
@@ -418,6 +437,9 @@ public class Table implements IDataObject {
         }
 
         private Matrix getDividerMatrix(Double divider) {
+            if (divider == 0) {
+                throw new MyTournamentException("Cant devide by 0");
+            }
             return getMultplicationMatrix(1 / divider);
         }
 
@@ -428,7 +450,7 @@ public class Table implements IDataObject {
         private Matrix getInversionMatrix(Double[][] matrix) {
             int colCount = matrix.length;
             if (colCount != 0 && colCount != matrix[0].length && detMatrix(matrix).intValue() != 0) {
-                throw new MyTournamentException("Для заданной матрици не существует обратной");
+                throw new MyTournamentException("Cannot find revers matrices");
             }
 
             Double temp;
@@ -441,9 +463,11 @@ public class Table implements IDataObject {
                 }
             }
 
+//            checkNaN(matrix);
             for (int k = 0; k < colCount; k++) {
                 temp = matrix[k][k];
-
+                if (temp == 0)
+                    throw new MyTournamentException("Error! It is impossible to find the inverse of a matrix");
                 for (int j = 0; j < colCount; j++) {
                     matrix[k][j] /= temp;
                     buf[k][j] /= temp;
@@ -526,20 +550,6 @@ public class Table implements IDataObject {
 
             return minor;
 
-        }
-
-        public Object[][] getMatrixValues() {
-            if (matrixType != Column.TYPE_DOUBLE) {
-                Integer[][] result = new Integer[getValues().length][getValues()[0].length];
-                for (int i = 0; i < getValues().length; i++) {
-                    for (int k = 0; k < getValues().length; k++) {
-                        result[i][k] = getValues()[i][k].intValue();
-                    }
-                }
-                return result;
-            }
-
-            return getValues();
         }
 
         @Override

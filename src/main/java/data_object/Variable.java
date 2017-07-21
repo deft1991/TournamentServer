@@ -3,6 +3,7 @@ package data_object;
 import org.json.JSONObject;
 import session_tools.Session;
 import tools.MyTournamentException;
+import tools.Tools;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -47,8 +48,26 @@ public class Variable implements IDataObject {
     }
 
     @Override
+    public void update(Connection connection) throws SQLException {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "UPDATE " + Session.VARIALBE_TABLE_NAME + "_" + sessionId +
+                        " set var_value = ? where var_name = ?"
+        )) {
+            ps.setDouble(1, value);
+            ps.setString(2, variableName);
+            ps.executeUpdate();
+        }
+    }
+
+    @Override
     public JSONObject getJSONObject() {
-        return null;
+        JSONObject result = new JSONObject() {{
+            put("name", variableName);
+            put("value", value);
+            put("type", "double");
+        }};
+
+        return result;
     }
 
     public Double getValue() {
@@ -65,7 +84,7 @@ public class Variable implements IDataObject {
         if (operandTwo instanceof Variable) {
             return new Variable("result_" + resultIndex, getValue() + ((Variable) operandTwo).getValue());
         } else {
-            throw new RuntimeException("Ошибка! Нельзя суммировать матрицу с числом");
+            throw new MyTournamentException("Error! Cannot sum matrices with variable");
         }
     }
 
@@ -74,7 +93,7 @@ public class Variable implements IDataObject {
         if (operandTwo instanceof Variable) {
             return new Variable("result_" + resultIndex, getValue() - ((Variable) operandTwo).getValue());
         } else {
-            throw new MyTournamentException("Ошибка! Нельзя вычитать матрицу и число");
+            throw new MyTournamentException("Error! Cannot substract matrices with variable");
         }
     }
 
@@ -90,7 +109,9 @@ public class Variable implements IDataObject {
     @Override
     public IDataObject getDividerResult(IDataObject operandTwo, int resultIndex) {
         if (operandTwo instanceof Variable) {
-            return new Variable("result_" + resultIndex, getValue() /  ((Variable) operandTwo).getValue());
+            if (((Variable) operandTwo).getValue() == 0 )
+                throw new MyTournamentException("Cant devide by 0");
+                return new Variable("result_" + resultIndex, getValue() / ((Variable) operandTwo).getValue());
         } else {
             return operandTwo.getDividerResult(this, resultIndex);
         }
@@ -99,7 +120,7 @@ public class Variable implements IDataObject {
     @Override
     public void insertTempAsSorce(String name, Session session) throws SQLException {
         try (PreparedStatement ps = session.getSqlConnection().prepareStatement(
-                "insert into " + Session.VARIALBE_TABLE_NAME + session.getSessionId() + " (var_name, var_value) " +
+                "insert into " + Session.VARIALBE_TABLE_NAME + "_" + session.getSessionId() + " (var_name, var_value) " +
                         "VALUES (?, ?)"
         )) {
             ps.setString(1, name);

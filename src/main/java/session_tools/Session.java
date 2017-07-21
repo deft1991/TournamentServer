@@ -1,10 +1,7 @@
 package session_tools;
 
 import calculate.Formula;
-import data_object.IDataObject;
-import data_object.LinkTable;
-import data_object.Table;
-import data_object.Variable;
+import data_object.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import tools.MyTournamentException;
@@ -23,7 +20,7 @@ public class Session {
     private long sessionId;
     private Connection sqlConnection;
     private Set<String> sessionTables = new HashSet<>();
-    private Map<String, LinkTable> linkTables = new HashMap<>();
+    private Map<String, ILinkObject> linkTables = new HashMap<>();
 
     public Session(long sessionId) {
         this(sessionId, "jdbc:mysql://localhost:3306/javastudy", "root", "root");
@@ -35,7 +32,7 @@ public class Session {
         try {
             sqlConnection = DriverManager.getConnection(dbAdress,dbLogin, dbPassword);
         } catch (SQLException e) {
-            throw new MyTournamentException("Ошибка! Не удалось установить соединение с базой данных");
+            throw new MyTournamentException("Error! Failed to establish database connection");
         }
     }
 
@@ -47,6 +44,7 @@ public class Session {
         for (String oneTableName : sessionTables) {
             Table.dropTable(getSqlConnection(), oneTableName);
         }
+        Table.dropTable(getSqlConnection(),VARIALBE_TABLE_NAME + "_" + getSessionId());
     }
 
     public long getSessionId() {
@@ -57,49 +55,42 @@ public class Session {
         return sqlConnection;
     }
 
-    public String getResultByAction(String actionName, String inputData) throws SQLException {
-        switch (actionName) {
-            case "calculate" : return getActionCalulate(inputData); // тестовая строка
-            case "save_table" :
-                new Table(new JSONObject(inputData), getSessionId()).insertInDB(getSqlConnection());
-                return "Таблица успешно перезаписана";
-            case "start_service" : return getActiongStartService(inputData);
-            case "start_and_calculate" :
-                JSONObject inputObj = new JSONObject(inputData);
-                getActiongStartService(inputObj.getString("input_data"));
-                return getActionCalulate(inputObj.getString("calculate"));
-            case "close_session" :
-                SessionController.getInstance().closeSession(sessionId);
-                return "Сессия закрыта, все таблицы удалены";
-            default: return "hello";
+    private void saveDataAction(String inputData) throws SQLException {
+        JSONObject dataJSON = new JSONObject(inputData);
+        if ("table".equals(dataJSON.getString("type"))) {
+            new Table(dataJSON, getSessionId()).update(getSqlConnection());
+        } else {
+            new Variable(dataJSON.getString("name"), Double.parseDouble(dataJSON.getString("value")), getSessionId())
+                    .update(getSqlConnection());
         }
     }
 
-    private String getTestCalculation() {
-        return "{\n" +
-                " \"formuls\":[\"t11+table_1->temp1\", \"t->temp2\"],\n" +
-                " \"filters\":[\n" +
-                "  {\n" +
-                "   \"table\" : \"t11\",\n" +
-                "   \"source\" : \"table_1\",\n" +
-                "\n" +
-                "   \"filter\": [\n" +
-                "    {\"name\":\"c1\", \"operation\":\">\", \"value\": \"0\", \"type\": \"long\"},\n" +
-                "    {\"name\":\"c2\", \"operation\":\"<\", \"value\": \"500\", \"type\": \"long\"}\n" +
-                "   ]\n" +
-                "  },\n" +
-                "  {\n" +
-                "   \"table\" : \"t\",\n" +
-                "   \"source\" : \"table_1\", \n" +
-                "   \"filter\": [\n" +
-                "    {\"name\":\"c1\", \"operation\":\">\", \"value\": \"2\", \"type\": \"long\"},\n" +
-                "    {\"name\":\"c2\", \"operation\":\"=\", \"value\": \"5\", \"type\": \"long\"}\n" +
-                "   ]\n" +
-                "  }\n" +
-                " ]\n" +
-                "}";
+    public String getResultByAction(String actionName, String inputData) throws SQLException {
+        switch (actionName) {
+            case "calculate":
+                return getActionCalulate(inputData); // тестовая строка
+            case "save_data":
+                saveDataAction(inputData);
+                return getMessageResult("Data is update");
+            case "start_service":
+                return getActiongStartService(inputData);
+            case "start_and_calculate":
+                JSONObject inputObj = new JSONObject(inputData);
+                getActiongStartService(inputObj.getString("input_data"));
+                return getActionCalulate(inputObj.getString("calculate"));
+            case "close_session":
+                SessionController.getInstance().closeSession(sessionId);
+                return getMessageResult("Session is close");
+            default:
+                return "hello";
+        }
     }
 
+    private String getMessageResult(final String message) {
+        return new JSONArray().put(new JSONObject() {{
+            put("value", message);
+        }}).toString();
+    }
 
     private String getActionCalulate(String inputData) throws SQLException {
         JSONObject calculateObject = new JSONObject(inputData);
@@ -107,9 +98,15 @@ public class Session {
         if (calculateObject.keySet().contains("filters")) {
             JSONArray linkTables = calculateObject.getJSONArray("filters");
             for (int i = 0; i < linkTables.length(); i++) {
-                JSONObject linkTableJSON = linkTables.getJSONObject(i);
-                this.linkTables.put(linkTableJSON.getString("table") + "_" + getSessionId(),
-                        new LinkTable(linkTableJSON, getSessionTables(), getSessionId()));
+                JSONObject linkObjJSON = linkTables.getJSONObject(i);
+                String name = linkObjJSON.getString("name") + "_" + getSessionId();
+                if ("table".equals(linkObjJSON.getString("type"))) {
+                    this.linkTables.put(name,
+                            new LinkTable(linkObjJSON, getSessionTables(), getSessionId()));
+                } else {
+                    this.linkTables.put(name,
+                            new LinkVariable(linkObjJSON.getString("source"),  getSessionId()));
+                }
             }
         }
         JSONArray resultArr = new JSONArray();
@@ -117,10 +114,6 @@ public class Session {
             resultArr.put(new Formula(formuls.getString(i), this, i).getJSONObject());
         }
         return resultArr.toString();
-    }
-
-    private String getActionHello() {
-        return "hello";
     }
 
     private void createVariableTable() throws SQLException {
@@ -143,19 +136,21 @@ public class Session {
                 sessionTables.add(oneTable.getName());
                 oneTable.insertInDB(getSqlConnection());
             } else {
-                Variable variable = new Variable(oneDataObj.getString("name"),
-                        Double.parseDouble(oneDataObj.get("value").toString()), getSessionId());
-                variable.insertInDB(getSqlConnection());
+                if ("long".equals(oneDataObj.getString("type")) || "double".equals(oneDataObj.getString("type"))) {
+                    Variable variable = new Variable(oneDataObj.getString("name"),
+                            Double.parseDouble(oneDataObj.get("value").toString()), getSessionId());
+                    variable.insertInDB(getSqlConnection());
+                }
             }
         }
-        return String.valueOf(sessionId);
+        return new JSONArray().put(new JSONObject(){{
+            put("sessionId", String.valueOf(getSessionId()));
+        }}).toString();
     }
 
-    private Table getTableFromLink(String objectName) throws SQLException {
-        LinkTable linkTable = linkTables.get(objectName);
-        try (PreparedStatement ps = getSqlConnection().prepareStatement(linkTable.getSql())) {
-            return new Table(ps.executeQuery());
-        }
+    private IDataObject getLinkDataObj(String objectName) throws SQLException {
+        ILinkObject linkTable = linkTables.get(objectName);
+        return linkTable.getSourceObject(getSqlConnection());
     }
 
     public IDataObject getDataObject(String name) throws SQLException {
@@ -168,7 +163,7 @@ public class Session {
             }
         } else {
             if (linkTables.containsKey(objectName)) {
-                return getTableFromLink(objectName);
+                return getLinkDataObj(objectName);
             } else {
                 try (PreparedStatement ps = getSqlConnection().prepareStatement(
                         "select * from " + VARIALBE_TABLE_NAME + "_" + getSessionId() + " where var_name = ?"
@@ -181,7 +176,7 @@ public class Session {
                 }
             }
         }
-        throw new MyTournamentException("Ошибка! Не верно указан оператор");
+        throw new MyTournamentException("Error! Broken operator in formula");
     }
 
 }

@@ -13,6 +13,7 @@ import java.sql.SQLException;
 public interface IDataObject {
 
     public void insertInDB(Connection connection) throws SQLException;
+    public void update(Connection connection) throws SQLException;
     public JSONObject getJSONObject();
     public String getName();
     public IDataObject getSumResult(IDataObject operandTwo, int resultIndex);

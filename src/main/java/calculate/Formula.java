@@ -42,6 +42,9 @@ public class Formula {
         if (script.indexOf(MULTIPLICATION) == index) {
             operator = MULTIPLICATION;
         }
+        if (script.indexOf(DIVIDE) == index) {
+            operator = DIVIDE;
+        }
         if (script.indexOf(TEMP) == index) {
             operator = TEMP;
         }
@@ -57,7 +60,7 @@ public class Formula {
                 return getOperationResult(operandOne, operator, script.delete(0, i + operator.length()));
             }
         }
-        throw new RuntimeException("Ошибка! Не верная формула");
+        throw new MyTournamentException("Error! Broken formula " + formulaScript);
     }
 
     private IDataObject getOperationResult(IDataObject firstOperand, String operator, StringBuilder script) throws SQLException {
@@ -72,7 +75,7 @@ public class Formula {
                 }
             }
         }
-        throw new MyTournamentException("Ошибка! Не верная формула");
+        throw new MyTournamentException("Error! Broken formula " + formulaScript);
     }
 
     private IDataObject getResult(IDataObject operandOne, String operandTwoName, String operator) throws SQLException {
