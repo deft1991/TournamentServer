@@ -75,6 +75,6 @@ public class TournamentServlet extends HttpServlet {
 
     private void setAccessControlHeaders(HttpServletResponse resp) {
         resp.setHeader("Access-Control-Allow-Origin", "*");
-        resp.setHeader("Accesse-Control-Allow-Methods", "GET");
+        resp.setHeader("Access-Control-Allow-Methods", "GET");
     }
 }
