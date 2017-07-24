@@ -3,7 +3,6 @@ package data_object;
 import org.json.JSONObject;
 import session_tools.Session;
 import tools.MyTournamentException;
-import tools.Tools;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -81,20 +80,12 @@ public class Variable implements IDataObject {
 
     @Override
     public IDataObject getSumResult(IDataObject operandTwo, int resultIndex) {
-        if (operandTwo instanceof Variable) {
-            return new Variable("result_" + resultIndex, getValue() + ((Variable) operandTwo).getValue());
-        } else {
-            throw new MyTournamentException("Error! Cannot sum matrices with variable");
-        }
+        return new Variable("result_" + resultIndex, getValue() + ((Variable) operandTwo).getValue());
     }
 
     @Override
     public IDataObject getSubstractResult(IDataObject operandTwo, int resultIndex) {
-        if (operandTwo instanceof Variable) {
-            return new Variable("result_" + resultIndex, getValue() - ((Variable) operandTwo).getValue());
-        } else {
-            throw new MyTournamentException("Error! Cannot substract matrices with variable");
-        }
+        return new Variable("result_" + resultIndex, getValue() - ((Variable) operandTwo).getValue());
     }
 
     @Override

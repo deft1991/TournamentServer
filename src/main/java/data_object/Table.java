@@ -18,31 +18,6 @@ public class Table implements IDataObject {
     private String tableName;
     private int lineCount;
 
-    /*
-    *      [{  "name": "table_1",
-            "datatype": "table",
-            "value": [
-              [1, 2, 3],
-              [4, 5, 6],
-              [7, 8, 9]
-            ],
-            "columns": [
-              {
-                "name": "c1",
-                "type": "number"
-              },
-              {
-                "name": "c2",
-                "type": "number"
-              },
-              {
-                "name": "c3",
-                "type": "number"
-              }
-            ]
-          }]
-    * */
-
     public Table(JSONObject jsonData, long sessionId) {
         this.tableName = jsonData.getString("name") + "_" + sessionId;
         JSONArray columnObjects = jsonData.getJSONArray("columns");
@@ -123,20 +98,12 @@ public class Table implements IDataObject {
 
     @Override
     public IDataObject getSumResult(IDataObject operandTwo, int resultIndex) {
-        if (operandTwo instanceof Table) {
-            return new Table(new Matrix(this).getMatrixSum(new Matrix((Table) operandTwo)), "result_" + resultIndex);
-        } else {
-            throw new MyTournamentException("Error! Cannot sum matrices with variable");
-        }
+        return new Table(new Matrix(this).getMatrixSum(new Matrix((Table) operandTwo)), "result_" + resultIndex);
     }
 
     @Override
-    public IDataObject getSubstractResult(IDataObject operandTwo, int resultIndex) {
-        if (operandTwo instanceof Table) {
-            return new Table(new Matrix(this).getSubstractMatrix(new Matrix((Table) operandTwo)), "result_" + resultIndex);
-        } else {
-            throw new MyTournamentException("Error! Cannot substract matrices with variable");
-        }
+    public IDataObject getSubstractResult(IDataObject operandTwo, int formulaHash) {
+        return new Table(new Matrix(this).getSubstractMatrix(new Matrix((Table) operandTwo)), "result_" + formulaHash + "_");
     }
 
     @Override
@@ -160,7 +127,7 @@ public class Table implements IDataObject {
     @Override
     public void insertTempAsSorce(String name, Session session) throws SQLException {
         String tempTableName = name + "_" + session.getSessionId();
-        this.dropTable(session.getSqlConnection(), tempTableName);
+        dropTable(session.getSqlConnection(), tempTableName);
         this.createTable(session.getSqlConnection(), tempTableName);
         this.insertTableData(session.getSqlConnection(), tempTableName);
         session.getSessionTables().add(tempTableName);
@@ -277,60 +244,7 @@ public class Table implements IDataObject {
             }
         }
 
-        /*public static BigInteger determinant(final Double[][] matr) {
 
-            int accuracy = 20;
-
-            BigDecimal EPS = BigDecimal.valueOf(0.00000000001);
-
-            int n = matr.length;
-            BigDecimal[][] a = new BigDecimal[n][n];
-            for (int i = 0; i < n; ++i)
-                for (int j = 0; j < n; ++j) {
-                    a[i][j] = new BigDecimal(matr[i][j]);
-                    a[i][j].setScale(accuracy, BigDecimal.ROUND_HALF_UP);
-                }
-
-            BigDecimal det = new BigDecimal(1.0);
-            det.setScale(accuracy, BigDecimal.ROUND_HALF_UP);
-
-            for (int i = 0; i < n; ++i) {
-                int k = i;
-                for (int j = i + 1; j < n; ++j)
-                    if (a[j][i].abs().compareTo(a[k][i].abs()) > 0)
-                        k = j;
-                if (a[k][i].abs().compareTo(EPS) < 0) {
-                    det = new BigDecimal(0.0);
-                    det.setScale(accuracy, BigDecimal.ROUND_HALF_UP);
-                    break;
-                }
-                BigDecimal[] tmp = a[i];
-                a[i] = a[k];
-                a[k] = tmp;
-
-                if (i != k)
-                    det = det.divide(new BigDecimal(-1), accuracy, BigDecimal.ROUND_HALF_UP);
-                det = det.multiply(a[i][i]);
-                for (int j = i + 1; j < n; ++j)
-                    a[i][j] = a[i][j].divide(a[i][i], accuracy, BigDecimal.ROUND_HALF_UP);
-                for (int j = 0; j < n; ++j)
-                    if (j != i && a[j][i].abs().compareTo(EPS) > 0)
-                        for (int kk = i + 1; kk < n; ++kk) {
-                            BigDecimal aikji = new BigDecimal(1.0);
-                            aikji.setScale(accuracy, BigDecimal.ROUND_HALF_UP);
-                            aikji = aikji.multiply(a[i][kk]);
-                            aikji = aikji.multiply(a[j][i]);
-                            aikji = aikji.multiply(new BigDecimal(-1));
-                            a[j][kk] = a[j][kk].add(aikji);
-                        }
-            }
-
-            det = det.abs();
-            det = det.add(new BigDecimal(0.00001));
-            return det.abs().toBigInteger();
-
-        }
-    */
         public int getMatrixType() {
             return matrixType;
         }
@@ -343,6 +257,7 @@ public class Table implements IDataObject {
             this.values = values;
         }
 
+        // сложение матриц
         public Matrix getMatrixSum(Matrix summand) {
             Double[][] summandValues = summand.getValues();
             if (isEqualMatrixSize(summandValues)) {
@@ -361,6 +276,7 @@ public class Table implements IDataObject {
             return matrixA.length != this.getValues().length || matrixA[0].length != this.getValues()[0].length;
         }
 
+        //вычтание матриц
         public Matrix getSubstractMatrix(Matrix subtrahend) {
             Double[][] subtrahendValues = subtrahend.getValues();
             if (isEqualMatrixSize(subtrahendValues)) {
@@ -375,6 +291,7 @@ public class Table implements IDataObject {
             return new Matrix(result);
         }
 
+        //умножение матрицы на число
         public Matrix getMultplicationMatrix(Double multiplier) {
             Double[][] res = new Double[getValues().length][getValues()[0].length];
             for (int i = 0; i < getValues().length; i++) {
@@ -385,30 +302,9 @@ public class Table implements IDataObject {
 
             return new Matrix(res);
         }
-        private void checkNaN(Double[][] matrix) {
-            for (int i = 0; i < matrix.length; i++) {
-                for (int k = 0; k < matrix[0].length; k++) {
-                    if (matrix[i][k].isNaN()) {
-                        throw new MyTournamentException("Error! It is impossible to find the inverse of a matrix");
-                    }
-                }
-            }
-        }
 
+        // умножение матриц
         public Matrix getMultplicationMatrix(Matrix multiplier) {
-        /*int[][] mA =
-                {{33,34,12},
-                        {33,19,10},
-                        {12,14,17},
-                        {84,24,51},
-                        {43,71,21}};
-
-        int[][] mB =
-                {{10,11,34,55},
-                        {33,45,17,81},
-                        {45,63,12,16}};
-
-*/
             int m = getValues().length;
             int n = multiplier.getValues()[0].length;
             int o = multiplier.getValues().length;
@@ -426,16 +322,10 @@ public class Table implements IDataObject {
                     }
                 }
             }
-
-        /*for (int i = 0; i < res.length; i++) {
-            for (int j = 0; j < res[0].length; j++) {
-                System.out.format("%6d ", res[i][j]);
-            }
-            System.out.println();
-        }*/
             return new Matrix(res);
         }
 
+        // деление матрицы на число
         private Matrix getDividerMatrix(Double divider) {
             if (divider == 0) {
                 throw new MyTournamentException("Cant devide by 0");
@@ -447,6 +337,7 @@ public class Table implements IDataObject {
             return getMultplicationMatrix(getInversionMatrix(matrix.getValues()));
         }
 
+        //получение обратной матрицы
         private Matrix getInversionMatrix(Double[][] matrix) {
             int colCount = matrix.length;
             if (colCount != 0 && colCount != matrix[0].length && detMatrix(matrix).intValue() != 0) {
@@ -463,7 +354,6 @@ public class Table implements IDataObject {
                 }
             }
 
-//            checkNaN(matrix);
             for (int k = 0; k < colCount; k++) {
                 temp = matrix[k][k];
                 if (temp == 0)
@@ -503,6 +393,7 @@ public class Table implements IDataObject {
             return new Matrix(matrix);
         }
 
+        // определение детерминанта матрицы
         public Double detMatrix(Double[][] matrix){
             double calcResult = 0D;
             if (matrix.length == 2) {
@@ -526,6 +417,7 @@ public class Table implements IDataObject {
             return calcResult;
         }
 
+        //метод нахождения минора матрицы
         private Double[][] GetMinor(Double[][] matrix, int row, int column){
             int minorLength = matrix.length - 1;
             Double[][] minor = new Double[minorLength][minorLength];

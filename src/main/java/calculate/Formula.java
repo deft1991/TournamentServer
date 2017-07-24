@@ -71,6 +71,9 @@ public class Formula {
                 if (nextOperator != null) {
                     return getOperationResult(result, nextOperator, script.delete(0, i + nextOperator.length()));
                 } else {
+                    if (result != null) {
+                        result.insertInDB(session.getSqlConnection());
+                    }
                     return result;
                 }
             }
@@ -85,13 +88,29 @@ public class Formula {
         }
         IDataObject operandTwo = session.getDataObject(operandTwoName);
         switch (operator) {
-            case SUBSTRACT : return operandOne.getSubstractResult(operandTwo, formulaIndex);
-            case SUM : return operandOne.getSumResult(operandTwo, formulaIndex);
+            case SUBSTRACT : return getSubstract(operandOne, operandTwo);
+            case SUM : return getSum(operandOne, operandTwo);
             case MULTIPLICATION : return operandOne.getMultiplicationResult(operandTwo, formulaIndex);
             case DIVIDE : return operandOne.getDividerResult(operandTwo, formulaIndex);
         }
         return null;
 
+    }
+
+    private IDataObject getSum(IDataObject operandOne, IDataObject operandTwo) throws SQLException {
+        if (operandOne.getClass().equals(operandTwo.getClass())) {
+            return operandOne.getSumResult(operandTwo, formulaIndex);
+        } else {
+            throw new MyTournamentException("Error! Cannot sum matrices with variable");
+        }
+    }
+
+    private IDataObject getSubstract(IDataObject operandOne, IDataObject operandTwo) throws SQLException {
+        if (operandOne.getClass().equals(operandTwo.getClass())) {
+            return operandOne.getSubstractResult(operandTwo, formulaIndex);
+        } else {
+            throw new MyTournamentException("Error! Cannot substract matrices with variable");
+        }
     }
 
     public JSONObject getJSONObject() {

@@ -6,6 +6,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import tools.MyTournamentException;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.sql.*;
 import java.util.*;
 
@@ -23,17 +25,41 @@ public class Session {
     private Map<String, ILinkObject> linkTables = new HashMap<>();
 
     public Session(long sessionId) {
-        this(sessionId, "jdbc:mysql://localhost:3306/javastudy", "root", "root");
-
+        this.sessionId = sessionId;
+        setSqlConnection();
     }
 
-    public Session(long sessionId, String dbAdress, String dbLogin, String dbPassword) {
-        this.sessionId = sessionId;
+    private void setSqlConnection() {
+        Properties config = new Properties();
+        FileInputStream fis;
         try {
-            sqlConnection = DriverManager.getConnection(dbAdress,dbLogin, dbPassword);
-        } catch (SQLException e) {
-            throw new MyTournamentException("Error! Failed to establish database connection");
+            fis = new FileInputStream("config.properties");
+            config.load(fis);
+
+            String host = config.getProperty("db_host");
+            String login = config.getProperty("db_login");
+            String password = config.getProperty("db_password");
+            try {
+                Class.forName(getDriverName(config.getProperty("db_type")));
+            } catch (ClassNotFoundException e) {
+                 throw new MyTournamentException("Error! Cant download driver for bd");
+            }
+            try {
+                sqlConnection = DriverManager.getConnection(host,login, password);
+            } catch (SQLException e) {
+                throw new MyTournamentException("Error! Failed to establish database connection");
+            }
+
+        } catch (IOException e) {
+            throw new MyTournamentException("Error: File whith properties not found!");
         }
+    }
+
+    private String getDriverName(String dbType) {
+        switch (dbType.toLowerCase()) {
+            case "mysql" : return "com.mysql.jdbc.Driver";
+        }
+        return "com.mysql.jdbc.Driver"; //дефолтный
     }
 
     public Set<String> getSessionTables() {
@@ -68,7 +94,7 @@ public class Session {
     public String getResultByAction(String actionName, String inputData) throws SQLException {
         switch (actionName) {
             case "calculate":
-                return getActionCalulate(inputData); // тестовая строка
+                return getActionCalulate(inputData);
             case "save_data":
                 saveDataAction(inputData);
                 return getMessageResult("Data is update");
